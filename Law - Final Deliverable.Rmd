@@ -1,0 +1,160 @@
+---
+title: "Final Deliverable - Baton Rouge Data"
+author: "Brooke Law"
+date: "2023-06-14"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### **Overview**
+This deliverable is an analysis of crime data originally collected by the City of Baton Rouge, Louisiana. I downloaded the data set from Data.gov using the following link: https://catalog.data.gov/dataset/baton-rouge-crime-incidents-e00e4. There were no code books provided, however, I assume the reason the City of Baton Rouge collected this data was for recording keeping or crime pattern tracking. 
+
+#### **Body**
+The data set came pretty well formatted to start. I did not have to do much, if any cleaning. The only manipulation I had to complete was involving the columns that contained dates to make sure they were formatted the way I need to produce my visualizations. 
+
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+
+setwd("/Users/brookelaw/Desktop/Drexel/Spring '23/CJS 310/")
+BatonRouge <- read_csv("Baton_Rouge_Crime_Incidents.csv")
+colnames(BatonRouge)
+BatonRouge
+```
+
+
+### Attempted vs Committed Crime Counts
+
+```{r BatonRouge, echo = FALSE}
+# Graph 1: Attempted vs Committed Crime Counts 
+BatonRouge %>%
+  ggplot(aes(x = `ATTEMPTED OR COMMITTED`, fill = `ATTEMPTED OR COMMITTED`)) + 
+  geom_bar() +
+  geom_text(stat = 'count', aes(label = after_stat(count)), vjust = -0.5)
+```
+
+For the first graph just to begin my exploration of the data set and what information I could grasp. I did not find it rather surprising that more crimes are committed than attempted because most people seem to be able to go through with their crimes, regardless of if they are caught or not. 
+
+
+### Proportion of Different Crime Types Committed per District
+
+```{r, echo = FALSE}
+# Graph 2: Proportion of Different Crime Types Committed per District
+BatonRouge1 <- subset(BatonRouge, !is.na(`DISTRICT`))
+
+BatonRouge1 %>% 
+  mutate(`DISTRICT` = factor(`DISTRICT`)) %>%
+  ggplot(mapping = aes( x = `DISTRICT`, fill = `CRIME AGAINST`), position = "dodge") + 
+  geom_bar()
+```
+
+For the second graph, I wanted to see if there was any variation among the different districts in Baton Rouge. While it was not shocking to see variation among the different districts, it was shocking to see just how different district 5's numbers were compared to the rest. Unfortunately, the data set did not come with a code book so I do not know if those 5 districts actually exist in Baton Rouge or were created for the purposes of data analysis. Because of that, there is not much to speculate on as to why this extreme drop in crime numbers occurs in district 5. 
+
+
+### When Crimes are Reported vs When Crimes are Charged
+
+```{r, echo = FALSE}
+# Graph 3: When Crimes are Reported vs When Crimes are Charged
+BatonRouge2 <- subset(BatonRouge, !is.na(`REPORT DATE`), !is.na(`CHARGE DATE`))
+
+BatonRouge2$`REPORT DATE` <- mdy_hms(BatonRouge2$`REPORT DATE`)
+BatonRouge2$`CHARGE DATE` <- mdy_hms(BatonRouge2$`CHARGE DATE`)
+
+BatonRouge2 %>%
+  mutate(BatonRouge2, hour = hour(`REPORT DATE`)) %>%
+  ggplot(aes(x = hour)) +
+  geom_point(stat = "count")
+
+BatonRouge2 %>%
+  mutate(BatonRouge2, hour = hour(`CHARGE DATE`)) %>%
+  ggplot(aes(x = hour)) +
+  geom_point(stat = "count")
+
+BatonRouge2 %>%
+  ggplot() +
+  geom_point(aes(x = hour(`REPORT DATE`)), stat = "count", color = "blue") +
+  geom_point(aes(x = hour(`CHARGE DATE`)), stat = "count", color = "red") +
+  labs(x = "Hour", y = "Count") + 
+  scale_x_continuous(breaks = c(3, 6, 9, 12, 15, 18, 21))
+
+
+```
+
+For the third graph I wanted to work more on my data manipulation skills. I wanted to work with data that involved times, so I could break down the information to track different trends. In this case, I was able to learn that the hours of the day when crimes are reported and charged aligned. On one hand, that shocked me because there is some times a delay in being able to find and charge the person who committed the crime. However, on the other hand, it did not shock me because depending on the crime it might be easier to actually report and charge the person at the same time. 
+
+What did shock me though is that crime report and charge rates significantly increased between the hours of 6am and 
+9am and then peak around 2pm. This stood out to be because before I would have assumed that most crimes would be charged and/or reported at night so between 9pm and 3am.
+
+
+### Peak Months for Number of Committed Crimes by Council District 
+
+```{r, echo = FALSE}
+# Graph 4: Peak Months for Number of Committed Crimes by Council District
+BatonRouge3 <- subset(BatonRouge, !is.na(`CHARGE DATE`) & !is.na(`COUNCIL DISTRICT`))
+
+BatonRouge3$`CHARGE DATE` <- mdy_hms(BatonRouge3$`CHARGE DATE`)
+
+BatonRouge3 %>%
+  mutate(month = month(`CHARGE DATE`)) %>%
+  ggplot(aes(x = month)) +
+  geom_line(stat = "count") + 
+  labs(x = "Month", y = "Number of Crimes Charged") +
+  scale_x_continuous(breaks = 1:12, labels = month.abb[1:12]) +
+  facet_wrap(~ `COUNCIL DISTRICT`, nrow = 3, ncol = 4) +
+  theme(axis.text.x = element_text(angle = 65, hjust = 1)) 
+```
+
+For the fourth graph I wanted to examine which month(s) had the most crime charged and then group that by council district which are actual districts created by the Baton Rouge legislature (can be viewed with the following link: https://www.brla.gov/801/District-Map-Demographics). Through this analysis I was able to deduce that most crimes are charged in the beginning of the year with a significant peak between March-May. 
+
+However, there were a couple outliers: districts 1 and 9. District 1 was completely flat with 0 crimes being charged which could be due to the fact that there is no police station in district 1. Meanwhile, district 9 was also fairly flat with slight peaks in January and December. 
+
+It is also worth noting that for districts 6, 7, 10, and 12 there was a significant drop in the number of crimes charged between May-July.
+
+
+### Number of Repeat Offenders per Crime Type (excludes NA)
+
+```{r, echo = FALSE}
+# Graph 5: Number of Repeat Offenders per Crime Type (excludes NA)
+BatonRouge4 <- BatonRouge %>%
+                filter(!is.na(`CRIME AGAINST`)) %>%
+                select(`CHARGE ID`, `CRIME AGAINST`)
+
+BatonRouge4 %>%
+  group_by(`CRIME AGAINST`) %>%
+  summarise(count = sum(duplicated(`CHARGE ID`))) %>%
+  filter(count > 0) %>%
+  ggplot(aes(x = `CRIME AGAINST`, y = count)) +
+  geom_bar(stat = "identity", fill = "orange") +
+  labs(x = "Crime Against", y = "Count of Duplicate CHARGE ID")
+```
+
+For the fifth, and final, data set I decided to take a look at the number of repeat offenders for each crime type (Person, Person/Property/or Society, Property, and Society). From this I learned that there were not many repeat offenders in the data set. Property had the most re-offenders but that was still only 23 out of the thousands of people data was collected on. 
+
+
+#### **Hypothesis & Testing**
+Hypothesis 1) The type of crime that will have the greatest number of repeat offenders is Property, given the context of the last few years with the pandemic and increased economic insecurity.
+
+Testing 1) Despite the number of repeat offenders being small in graph 5, it is clear to see that the crime type category with the most re-offenders is Property. 
+
+Hypothesis 2) More densely populated council districts will have greater crime charge rates because there are more people around to witness and then report crimes.
+
+Testing 2) Districts 7 and 10 are two of the smaller districts with the close to the same population as districts 3 and 4 which are much geographically larger (as seen in the Baton Rouge map). However, as seen in graph 4, the number of crimes charged for districts 7 and 10 are significantly greater than districts 3 and 4.
+
+Hypothesis 3) Crimes against people will be the second largest share of out of all the crimes committed regardless of which district is being analyzed.
+
+Testing 3) As can be viewed in graph 2, crimes against person makes up the second largest share even in a district like district 5 where little crime takes place. 
+
+
+#### **Conclusion**
+Overall, it seems like Baton Rouge has little to moderate rates of crime. Most of the crimes seemed to be focused on property which is positive in the sense that it is not directly harming people. Furthermore, it seems like many districts have their crime issues relatively under control with their crime charge rates remaining steady for 9 out of 12 months of the year. 
+
+In terms of ethical concerns the only I can think of is manipulation of what geographical boundaries define a district (like the ones referenced in graph 2) because the way a city gets split up can effect how good or bad the crime rates seem. That perspective can effect the funding and the policies surrounding how crime preventing and punishment is handled. 
+
+In the end I learned a lot from working with this data. I became better at visualization in addition to cleaning and analyzing data. 
