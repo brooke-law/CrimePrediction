@@ -24,9 +24,7 @@ Notes: No accompanying codebook provided. Dataset required minimal cleaning, wit
 
 ## Methods
 
-Tools Used:
-
-R, R Markdown
+Tools Used: R, R Markdown
 
 Libraries: tidyverse, ggplot2, dplyr, lubridate
 
